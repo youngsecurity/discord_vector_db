@@ -1,0 +1,23 @@
+# Discord Vector DB Requirements
+
+# Core Dependencies
+httpx>=0.24.0
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+
+# Vector Database
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+
+# Privacy & Security
+cryptography>=41.0.0
+regex>=2023.0.0
+
+# CLI & Progress Tracking
+rich>=13.0.0
+typer>=0.9.0
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.10.0

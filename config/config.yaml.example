@@ -1,0 +1,48 @@
+# Discord Vector DB Configuration Example
+
+# Discord Settings
+discord:
+  # Rate limiting settings
+  rate_limit_delay: 1.0  # Seconds between API calls
+  max_retries: 5  # Maximum number of retries for failed API calls
+
+# Privacy Settings
+privacy:
+  # PII Detection and Redaction
+  redact_pii: true  # Enable PII redaction
+  redaction_patterns:
+    - type: "email"
+      regex: "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}"
+      replacement: "[EMAIL REDACTED]"
+    - type: "phone"
+      regex: "\\b\\d{3}[-.]?\\d{3}[-.]?\\d{4}\\b"
+      replacement: "[PHONE REDACTED]"
+    
+  # Opt-out Registry
+  opt_out_users:
+    - "user_id_1"
+    - "user_id_2"
+  
+  # Secure Storage
+  encryption:
+    enabled: false  # Set to true to enable encrypted storage
+    # key_file: "path/to/key"  # Uncomment to specify key file
+
+# Vector Database Settings
+vector_db:
+  collection_name: "discord_messages"
+  embedding_model: "all-MiniLM-L6-v2"  # SentenceTransformer model
+  batch_size: 100  # Number of messages to process at once
+  
+# Checkpointing
+checkpointing:
+  enabled: true
+  checkpoint_file: "checkpoint.json"
+  auto_resume: true
+  
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: "discord_retriever.log"
+  max_size: 10485760  # 10 MB
+  backup_count: 3
