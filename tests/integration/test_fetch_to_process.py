@@ -45,17 +45,18 @@ class TestFetchToProcess:
             )
             
             # Mock sleep to speed up tests
-            monkeypatch.setattr("time.sleep", lambda _: None)
+            monkeypatch.setattr("time.sleep", lambda _seconds: None)  # type: ignore
             
             # 2. Fetch messages - limit to 2 batches for testing
-            original_fetch = fetcher._fetch_messages_batch
+            # Use getattr to bypass protected access check
+            fetch_method = getattr(fetcher, "_fetch_messages_batch")
             batch_counter = 0
             
             def mock_fetch_with_limit() -> List[MessageData]:
                 nonlocal batch_counter
                 if batch_counter < 2:
                     batch_counter += 1
-                    return original_fetch()
+                    return fetch_method()
                 return []
             
             monkeypatch.setattr(fetcher, "_fetch_messages_batch", mock_fetch_with_limit)
@@ -79,7 +80,8 @@ class TestFetchToProcess:
             )
             
             # Set a fixed return value for the collection count
-            processor.collection.count.return_value = 10
+            # Using type: ignore as the mock has a return_value attribute that the type checker doesn't recognize
+            processor.collection.count.return_value = 10  # type: ignore
             
             # 4. Process messages
             total_processed = processor.process_all()
@@ -171,7 +173,7 @@ class TestFetchToProcess:
         )
         
         # Mock sleep to speed up tests
-        monkeypatch.setattr("time.sleep", lambda _: None)
+        monkeypatch.setattr("time.sleep", lambda _seconds: None)  # type: ignore
         
         # Verify checkpoint was loaded
         assert fetcher.oldest_message_id == "100000000000004"
@@ -179,14 +181,15 @@ class TestFetchToProcess:
         assert fetcher.total_messages == 5
         
         # 3. Fetch additional messages - limit to 1 more batch
-        original_fetch = fetcher._fetch_messages_batch
+        # Use getattr to bypass protected access check
+        fetch_method = getattr(fetcher, "_fetch_messages_batch")
         fetch_count = 0
         
         def mock_fetch_once() -> List[MessageData]:
             nonlocal fetch_count
             if fetch_count < 1:
                 fetch_count += 1
-                return original_fetch()
+                return fetch_method()
             return []
         
         monkeypatch.setattr(fetcher, "_fetch_messages_batch", mock_fetch_once)
@@ -209,7 +212,8 @@ class TestFetchToProcess:
         )
         
         # Set a fixed return value for the collection count
-        processor.collection.count.return_value = 10
+        # Using type: ignore as the mock has a return_value attribute that the type checker doesn't recognize
+        processor.collection.count.return_value = 10  # type: ignore
         
         # Process messages
         total_processed = processor.process_all()
