@@ -1,48 +1,30 @@
 # Discord Vector DB Configuration Example
 
-# Discord Settings
-discord:
-  # Rate limiting settings
-  rate_limit_delay: 1.0  # Seconds between API calls
-  max_retries: 5  # Maximum number of retries for failed API calls
+# Fetcher settings
+fetcher:
+  channel_id: "731607577481314359"  # Required: Discord channel ID to fetch messages from
+  save_directory: "messages"         # Directory to save message batches
+  # checkpoint_file: "checkpoint.json"  # Optional: Custom checkpoint file path
+  rate_limit_delay: 1.0             # Delay between API calls in seconds
+  max_retries: 5                    # Maximum number of retries for failed API calls
+  # start_date: "2023-01-01T00:00:00"  # Optional: Only fetch messages after this date (ISO format)
+  # end_date: "2023-12-31T23:59:59"    # Optional: Only fetch messages before this date (ISO format)
 
-# Privacy Settings
+# Processor settings
+processor:
+  messages_directory: "messages"     # Directory containing message batch files
+  collection_name: "discord_messages"  # Name of the vector database collection
+  embedding_model: "all-MiniLM-L6-v2"  # Name of the sentence transformer model to use
+  batch_size: 100                    # Number of messages to process at once
+
+# Privacy settings
 privacy:
-  # PII Detection and Redaction
-  redact_pii: true  # Enable PII redaction
-  redaction_patterns:
-    - type: "email"
-      regex: "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}"
-      replacement: "[EMAIL REDACTED]"
-    - type: "phone"
-      regex: "\\b\\d{3}[-.]?\\d{3}[-.]?\\d{4}\\b"
-      replacement: "[PHONE REDACTED]"
-    
-  # Opt-out Registry
-  opt_out_users:
-    - "user_id_1"
-    - "user_id_2"
-  
-  # Secure Storage
-  encryption:
-    enabled: false  # Set to true to enable encrypted storage
-    # key_file: "path/to/key"  # Uncomment to specify key file
+  redact_pii: true                  # Whether to redact PII from messages
+  # opt_out_file: "opt_out.txt"      # Optional: File containing list of opted-out user IDs
+  custom_patterns: []                # Optional: Custom PII detection patterns
 
-# Vector Database Settings
-vector_db:
-  collection_name: "discord_messages"
-  embedding_model: "all-MiniLM-L6-v2"  # SentenceTransformer model
-  batch_size: 100  # Number of messages to process at once
-  
-# Checkpointing
-checkpointing:
-  enabled: true
-  checkpoint_file: "checkpoint.json"
-  auto_resume: true
-  
-# Logging
-logging:
-  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
-  file: "discord_retriever.log"
-  max_size: 10485760  # 10 MB
-  backup_count: 3
+# Security settings
+security:
+  encryption_enabled: true           # Whether to encrypt stored data
+  key_file: "secure/discord_db.key"  # Path to encryption key file (more secure location)
+  data_directory: "secure_data"      # Directory to store secure data

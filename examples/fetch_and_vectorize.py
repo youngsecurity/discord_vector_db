@@ -1,137 +1,154 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
-Example script for fetching Discord messages and adding them to a vector database.
+Example script demonstrating the use of Discord Message Vector DB.
 
-This script demonstrates how to use the discord_retriever package to fetch
-messages from a Discord channel and add them to a vector database for
-semantic search.
+This script shows how to fetch messages from Discord and process them for
+vector database storage using the improved architecture with dependency
+injection and centralized configuration.
 """
 
 import argparse
-import datetime
 import logging
 import sys
 from pathlib import Path
+from typing import Optional
 
-from discord_retriever import (
-    DiscordMessageFetcher,
-    PrivacyFilter,
-    VectorDBProcessor,
-)
+from rich.console import Console
+from rich.logging import RichHandler
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("discord_retriever.log")
-    ]
-)
-logger = logging.getLogger("discord_retriever_example")
+from discord_retriever.app import initialize_app, run_fetch, run_process, search
+from discord_retriever.config import AppSettings
+from discord_retriever.exceptions import ConfigurationError
 
 
-def parse_args():
+def setup_logging(verbose: bool = False) -> None:
+    """Set up logging with rich formatting."""
+    log_level = logging.DEBUG if verbose else logging.INFO
+    
+    # Configure logging
+    logging.basicConfig(
+        level=log_level,
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True)]
+    )
+
+
+def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description="Fetch Discord messages and add to vector database")
-    parser.add_argument("channel_id", help="Discord channel ID to fetch messages from")
-    parser.add_argument("--save-dir", default="messages", help="Directory to save message batches")
-    parser.add_argument("--collection", default="discord_messages", help="Vector DB collection name")
-    parser.add_argument("--rate-limit", type=float, default=1.0, help="Delay between API calls in seconds")
-    parser.add_argument("--start-date", help="Only fetch messages after this date (ISO format)")
-    parser.add_argument("--end-date", help="Only fetch messages before this date (ISO format)")
-    parser.add_argument("--redact-pii", action="store_true", help="Redact personally identifiable information")
-    parser.add_argument("--opt-out-file", help="File containing list of opted-out user IDs")
+    parser = argparse.ArgumentParser(
+        description="Discord Message Vector DB Example"
+    )
+    
+    parser.add_argument(
+        "--config", "-c",
+        type=Path,
+        help="Path to configuration file"
+    )
+    
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Enable verbose logging"
+    )
+    
+    subparsers = parser.add_subparsers(dest="command", help="Command to run")
+    
+    # Fetch command
+    fetch_parser = subparsers.add_parser("fetch", help="Fetch messages from Discord")
+    fetch_parser.add_argument(
+        "--channel-id",
+        help="Discord channel ID (overrides config)"
+    )
+    
+    # Process command
+    process_parser = subparsers.add_parser("process", help="Process messages for vector database")
+    process_parser.add_argument(
+        "--messages-dir",
+        type=Path,
+        help="Directory containing message files (overrides config)"
+    )
+    
+    # Search command
+    search_parser = subparsers.add_parser("search", help="Search for messages")
+    search_parser.add_argument(
+        "query",
+        help="Search query"
+    )
+    search_parser.add_argument(
+        "--results", "-n",
+        type=int,
+        default=5,
+        help="Number of results to return"
+    )
     
     return parser.parse_args()
 
 
-def fetch_messages(args):
-    """Fetch messages from Discord channel."""
-    logger.info(f"Fetching messages from channel: {args.channel_id}")
+def override_settings(args: argparse.Namespace, settings: AppSettings) -> None:
+    """Override settings from command line arguments."""
+    # Override fetcher settings
+    if args.command == "fetch" and args.channel_id:
+        settings.fetcher.channel_id = args.channel_id
     
-    # Parse dates if provided
-    start_date = None
-    if args.start_date:
-        start_date = datetime.datetime.fromisoformat(args.start_date)
-        
-    end_date = None
-    if args.end_date:
-        end_date = datetime.datetime.fromisoformat(args.end_date)
-    
-    # Initialize fetcher
-    fetcher = DiscordMessageFetcher(
-        channel_id=args.channel_id,
-        save_directory=args.save_dir,
-        rate_limit_delay=args.rate_limit,
-        start_date=start_date,
-        end_date=end_date,
-    )
-    
-    # Fetch messages
-    try:
-        total_messages = fetcher.fetch_all()
-        logger.info(f"Successfully fetched {total_messages} messages!")
-        return total_messages
-    except NotImplementedError:
-        logger.error(
-            "The Discord MCP integration is not implemented in this example. "
-            "In a real environment, you would need to integrate with the MCP tool."
-        )
-        return 0
-    except Exception as e:
-        logger.error(f"Error fetching messages: {e}")
-        return 0
+    # Override processor settings
+    if args.command == "process" and args.messages_dir:
+        settings.processor.messages_directory = args.messages_dir
 
 
-def process_messages(args):
-    """Process messages and add to vector database."""
-    logger.info(f"Processing messages from: {args.save_dir}")
+def main() -> int:
+    """Run the example script."""
+    console = Console()
     
-    # Initialize processor
-    processor = VectorDBProcessor(
-        messages_directory=args.save_dir,
-        collection_name=args.collection,
-    )
-    
-    # Process messages
-    try:
-        total_count = processor.process_all()
-        logger.info(f"Successfully processed {total_count} messages!")
-        return total_count
-    except ImportError:
-        logger.error(
-            "Vector database dependencies not installed. "
-            "Please install with: pip install chromadb sentence-transformers"
-        )
-        return 0
-    except Exception as e:
-        logger.error(f"Error processing messages: {e}")
-        return 0
-
-
-def main():
-    """Main function."""
+    # Parse arguments
     args = parse_args()
     
-    # Create directories
-    Path(args.save_dir).mkdir(parents=True, exist_ok=True)
+    # Set up logging
+    setup_logging(args.verbose)
     
-    # Fetch messages
-    if fetch_messages(args) > 0:
-        # Process messages
-        process_messages(args)
+    # Load configuration
+    try:
+        settings = initialize_app(args.config)
         
-        # Show example search prompt
-        print("\nYou can now search the vector database with:")
-        print(f"from discord_retriever import VectorDBProcessor")
-        print(f"processor = VectorDBProcessor('', '{args.collection}')")
-        print(f"results = processor.search('your search query here')")
-        print("for result in results:")
-        print("    print(f\"Content: {result['content']}\")")
-        print("    print(f\"Author: {result['metadata']['author']}\")")
-        print("    print(f\"Similarity: {result['similarity']:.2f}\\n\")")
+        # Override settings from command line
+        override_settings(args, settings)
+        
+    except ConfigurationError as e:
+        console.print(f"[bold red]Configuration error: {e}[/bold red]")
+        return 1
+    except ImportError as e:
+        console.print(f"[bold red]Missing dependency: {e}[/bold red]")
+        return 1
+    
+    # Run the specified command
+    try:
+        if args.command == "fetch":
+            console.print(f"[bold blue]Fetching messages from channel: {settings.fetcher.channel_id}[/bold blue]")
+            run_fetch(settings)
+            console.print("[bold green]Fetch completed successfully![/bold green]")
+            
+        elif args.command == "process":
+            console.print(f"[bold blue]Processing messages from: {settings.processor.messages_directory}[/bold blue]")
+            run_process(settings)
+            console.print("[bold green]Processing completed successfully![/bold green]")
+            
+        elif args.command == "search":
+            console.print(f"[bold blue]Searching for: {args.query}[/bold blue]")
+            search(args.query, args.results, settings)
+            
+        else:
+            console.print("[yellow]Please specify a command: fetch, process, or search[/yellow]")
+            return 1
+            
+    except Exception as e:
+        console.print(f"[bold red]Error: {e}[/bold red]")
+        if args.verbose:
+            import traceback
+            console.print("[bold red]" + traceback.format_exc() + "[/bold red]")
+        return 1
+    
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
