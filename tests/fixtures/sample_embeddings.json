@@ -1,0 +1,27 @@
+[
+  {
+    "id": "1000000000000001",
+    "content": "Hello everyone! Welcome to our Discord server!",
+    "embedding": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+  },
+  {
+    "id": "1000000000000002",
+    "content": "Thanks for the welcome! I'm excited to be here.",
+    "embedding": [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.1]
+  },
+  {
+    "id": "1000000000000003",
+    "content": "Here's a link to our documentation: https://example.com/docs",
+    "embedding": [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.1, 0.2]
+  },
+  {
+    "id": "1000000000000004",
+    "content": "Check out this image I made for the project!",
+    "embedding": [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.1, 0.2, 0.3]
+  },
+  {
+    "id": "1000000000000005",
+    "content": "I've created a new channel for technical discussions",
+    "embedding": [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.1, 0.2, 0.3, 0.4]
+  }
+]
