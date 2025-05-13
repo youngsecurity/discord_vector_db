@@ -151,7 +151,7 @@ def Option(  # type: ignore
     allow_dash: bool = False,
     path_type: type[object] | None = None,
     rich_help_panel: str | None = None,
-) -> AnyValue: ...
+) -> object: ...
 
 class ArgumentClass(CallbackParam):
     """Represents a command line argument."""
@@ -189,7 +189,7 @@ def Argument(  # type: ignore
     allow_dash: bool = False,
     path_type: type[object] | None = None,
     rich_help_panel: str | None = None,
-) -> AnyValue: ...
+) -> object: ...
 
 def run(
     function: AnyCallable | None = None,

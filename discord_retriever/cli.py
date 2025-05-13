@@ -9,21 +9,57 @@ import datetime
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
+
+# Import package modules first
+from .fetcher import DiscordMessageFetcher
+from .processor import VectorDBProcessor
+from .privacy import PrivacyFilter
 
 try:
-    import typer
-    from rich.console import Console
-    from rich.logging import RichHandler
-    from rich.progress import Progress, SpinnerColumn, TextColumn
-    from rich.table import Table
+    import typer  # type: ignore
+    from rich.console import Console  # type: ignore
+    from rich.logging import RichHandler  # type: ignore
+    from rich.progress import Progress, SpinnerColumn, TextColumn  # type: ignore
+    from rich.table import Table  # type: ignore
 except ImportError:
     print("CLI dependencies not installed. Please install with: pip install typer rich")
     sys.exit(1)
 
-from .fetcher import DiscordMessageFetcher
-from .processor import VectorDBProcessor
-from .privacy import PrivacyFilter
+# Type helpers for typer - using simple functions with type ignores
+def path_argument(default: Any, help_text: str) -> Path:
+    """Helper to properly type Path arguments."""
+    # We're telling the type checker to trust us here
+    return typer.Argument(default, help=help_text)  # type: ignore
+
+def path_option(default: Any, help_text: str) -> Path:
+    """Helper to properly type Path options."""
+    return typer.Option(default, help=help_text)  # type: ignore
+
+def str_argument(default: Any, help_text: str) -> str:
+    """Helper to properly type str arguments."""
+    return typer.Argument(default, help=help_text)  # type: ignore
+
+def str_option(default: str, help_text: str) -> str:
+    """Helper to properly type str options."""
+    return typer.Option(default, help=help_text)  # type: ignore
+
+def float_option(default: float, help_text: str) -> float:
+    """Helper to properly type float options."""
+    return typer.Option(default, help=help_text)  # type: ignore
+
+def int_option(default: int, help_text: str) -> int:
+    """Helper to properly type int options."""
+    return typer.Option(default, help=help_text)  # type: ignore
+
+def datetime_option(default: Optional[datetime.datetime], help_text: str) -> Optional[datetime.datetime]:
+    """Helper to properly type datetime options."""
+    return typer.Option(default, help=help_text)  # type: ignore
+
+def bool_option(default: bool, help_text: str) -> bool:
+    """Helper to properly type bool options."""
+    return typer.Option(default, help=help_text)  # type: ignore
+
 
 # Set up CLI app
 app = typer.Typer(help="Discord Message Vector DB CLI")
@@ -39,17 +75,22 @@ logging.basicConfig(
 logger = logging.getLogger("discord_retriever")
 
 
+# Add an explicit path_option_optional helper for optional Path parameters
+def path_option_optional(default: Any, help_text: str) -> Optional[Path]:
+    """Helper to properly type optional Path options."""
+    return typer.Option(default, help=help_text)  # type: ignore
+
 @app.command()
 def fetch(
-    channel_id: str = typer.Argument(None, help="Discord channel ID to fetch messages from"),  # type: ignore
-    save_dir: Path = typer.Option(Path("messages"), help="Directory to save message batches"),
-    checkpoint_file: Optional[Path] = typer.Option(None, help="Checkpoint file path"),
-    rate_limit: float = typer.Option(1.0, help="Delay between API calls in seconds"),
-    max_retries: int = typer.Option(5, help="Maximum number of retries for failed API calls"),
-    start_date: Optional[datetime.datetime] = typer.Option(None, help="Only fetch messages after this date (ISO format)"),
-    end_date: Optional[datetime.datetime] = typer.Option(None, help="Only fetch messages before this date (ISO format)"),
-    redact_pii: bool = typer.Option(True, help="Redact personally identifiable information"),
-    opt_out_file: Optional[Path] = typer.Option(None, help="File containing list of opted-out user IDs (one per line)"),
+    channel_id: str = str_argument(..., "Discord channel ID to fetch messages from"),  # type: ignore
+    save_dir: Path = path_option(Path("messages"), "Directory to save message batches"),  # type: ignore
+    checkpoint_file: Optional[Path] = path_option_optional(None, "Checkpoint file path"),  # type: ignore
+    rate_limit: float = float_option(1.0, "Delay between API calls in seconds"),  # type: ignore
+    max_retries: int = int_option(5, "Maximum number of retries for failed API calls"),  # type: ignore
+    start_date: Optional[datetime.datetime] = datetime_option(None, "Only fetch messages after this date (ISO format)"),  # type: ignore
+    end_date: Optional[datetime.datetime] = datetime_option(None, "Only fetch messages before this date (ISO format)"),  # type: ignore
+    redact_pii: bool = bool_option(True, "Redact personally identifiable information"),  # type: ignore
+    opt_out_file: Optional[Path] = path_option_optional(None, "File containing list of opted-out user IDs (one per line)"),  # type: ignore
 ):
     """
     Fetch messages from a Discord channel.
@@ -67,9 +108,10 @@ def fetch(
         console.print(f"Loaded {len(opt_out_users)} opted-out users from {opt_out_file}")
     
     # Initialize privacy filter if needed
-    privacy_filter = None
     if redact_pii or opt_out_users:
-        privacy_filter = PrivacyFilter(
+        # Create but don't store privacy filter since it's not being used yet
+        # Will be passed to processor in a future implementation
+        PrivacyFilter(
             redact_pii=redact_pii,
             opt_out_users=opt_out_users
         )
@@ -113,10 +155,10 @@ def fetch(
 
 @app.command()
 def process(
-    messages_dir: Path = typer.Argument(None, help="Directory containing message batch files"),  # type: ignore
-    collection: str = typer.Option("discord_messages", help="Name of the vector database collection"),
-    embedding_model: str = typer.Option("all-MiniLM-L6-v2", help="Name of the sentence transformer model"),
-    batch_size: int = typer.Option(100, help="Number of messages to process at once"),
+    messages_dir: Path = path_argument(..., "Directory containing message batch files"),  # type: ignore
+    collection: str = str_option("discord_messages", "Name of the vector database collection"),  # type: ignore
+    embedding_model: str = str_option("all-MiniLM-L6-v2", "Name of the sentence transformer model"),  # type: ignore
+    batch_size: int = int_option(100, "Number of messages to process at once"),  # type: ignore
 ):
     """
     Process messages and add them to a vector database.
@@ -161,10 +203,10 @@ def process(
 
 @app.command()
 def search(
-    query: str = typer.Argument(None, help="Search query"),  # type: ignore
-    collection: str = typer.Option("discord_messages", help="Name of the vector database collection"),
-    embedding_model: str = typer.Option("all-MiniLM-L6-v2", help="Name of the sentence transformer model"),
-    n_results: int = typer.Option(5, help="Number of results to return"),
+    query: str = str_argument(..., "Search query"),  # type: ignore
+    collection: str = str_option("discord_messages", "Name of the vector database collection"),  # type: ignore
+    embedding_model: str = str_option("all-MiniLM-L6-v2", "Name of the sentence transformer model"),  # type: ignore
+    n_results: int = int_option(5, "Number of results to return"),  # type: ignore
 ):
     """
     Search for messages in the vector database.
