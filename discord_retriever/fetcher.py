@@ -7,17 +7,34 @@ pagination, checkpointing, and error recovery.
 
 import json
 import logging
-import os
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Final, cast, TypeVar, Sequence
+from typing_extensions import TypedDict, Protocol
 
-from .models import CheckpointData, CircuitBreaker, DiscordMessage, ProgressTracker
+from .models import CheckpointData, CircuitBreaker, DiscordMessage, ProgressTracker, MessageDict
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
+
+# Base class with required fields
+class _BaseMessageData(TypedDict):
+    """Base TypedDict for required message fields."""
+    id: str
+    content: str
+    timestamp: str
+    
+# Full message data with optional fields
+class MessageData(_BaseMessageData, total=False):
+    """TypedDict for raw message data from Discord API."""
+    channel_id: str
+    author: Dict[str, Any]
+    mentions: List[Dict[str, Any]]
+    attachments: List[Dict[str, Any]]
+    reactions: List[Dict[str, Any]]
+    
 
 class DiscordMessageFetcher:
     """
@@ -49,32 +66,39 @@ class DiscordMessageFetcher:
             start_date: Only fetch messages after this date (optional)
             end_date: Only fetch messages before this date (optional)
         """
-        self.channel_id = channel_id
-        self.save_directory = Path(save_directory)
+        self.channel_id: str = channel_id
+        self.save_directory: Path = Path(save_directory)
         self.save_directory.mkdir(parents=True, exist_ok=True)
         
-        # Set checkpoint file
+        # Set checkpoint file path
+        checkpoint_path: Path
         if checkpoint_file is None:
-            self.checkpoint_file = Path(f"checkpoint_{channel_id}.json")
+            checkpoint_path = Path(f"checkpoint_{channel_id}.json")
         else:
-            self.checkpoint_file = Path(checkpoint_file)
+            checkpoint_path = Path(checkpoint_file)
+        self.checkpoint_file: Path = checkpoint_path
         
         # API settings
-        self.rate_limit_delay = rate_limit_delay
-        self.max_retries = max_retries
+        self.rate_limit_delay: float = rate_limit_delay
+        self.max_retries: int = max_retries
         
         # Date filtering
-        self.start_date = start_date
-        self.end_date = end_date
+        self.start_date: Optional[datetime] = start_date
+        self.end_date: Optional[datetime] = end_date
+        
+        # State attributes that will be set in _load_checkpoint
+        self.oldest_message_id: Optional[str] = None
+        self.batch_count: int = 0
+        self.total_messages: int = 0
         
         # State
         self._load_checkpoint()
         
         # Circuit breaker for handling repeated failures
-        self.circuit_breaker = CircuitBreaker(max_failures=max_retries)
+        self.circuit_breaker: CircuitBreaker = CircuitBreaker(max_failures=max_retries)
         
         # Progress tracking
-        self.progress = ProgressTracker(stall_timeout=300)  # 5 minutes timeout
+        self.progress: ProgressTracker = ProgressTracker(stall_timeout=300)  # 5 minutes timeout
     
     def _load_checkpoint(self) -> None:
         """Load the previous checkpoint if it exists."""
@@ -107,7 +131,7 @@ class DiscordMessageFetcher:
         checkpoint.save(self.checkpoint_file)
         logger.debug(f"Checkpoint saved: {self.checkpoint_file}")
     
-    def _fetch_messages_batch(self) -> List[Dict[str, Any]]:
+    def _fetch_messages_batch(self) -> List[MessageData]:
         """
         Fetch a batch of messages from Discord.
         
@@ -167,7 +191,7 @@ class DiscordMessageFetcher:
         logger.error(f"Failed to fetch messages after {self.max_retries} attempts: {last_error}")
         raise RuntimeError(f"Failed to fetch messages: {last_error}")
     
-    def _call_discord_mcp(self, args: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _call_discord_mcp(self, args: Dict[str, Any]) -> List[MessageData]:
         """
         Call the Discord MCP server to fetch messages.
         
@@ -202,7 +226,7 @@ class DiscordMessageFetcher:
             "with the actual MCP tool in the runtime environment."
         )
     
-    def _filter_messages_by_date(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _filter_messages_by_date(self, messages: List[MessageData]) -> List[MessageData]:
         """
         Filter messages by date range if start_date or end_date is specified.
         
@@ -236,7 +260,7 @@ class DiscordMessageFetcher:
         
         return filtered_messages
     
-    def _save_messages_batch(self, messages: List[Dict[str, Any]]) -> Path:
+    def _save_messages_batch(self, messages: List[MessageData]) -> Path:
         """
         Save a batch of messages to a file.
         

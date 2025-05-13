@@ -7,14 +7,21 @@ identifiable information (PII) from Discord messages.
 
 import logging
 import re
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Pattern, Set, Union, Any, cast
-import typing
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Pattern, Set, Union, Any, Final
+from typing_extensions import TypedDict
 
 from .models import DiscordMessage
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+
+class PatternDict(TypedDict):
+    """Dictionary containing a pattern definition."""
+    type: str
+    regex: str
+    replacement: str
 
 
 @dataclass
@@ -25,7 +32,7 @@ class RedactionPattern:
     replacement: str
     
     @classmethod
-    def from_dict(cls, data: Dict[str, str]) -> "RedactionPattern":
+    def from_dict(cls, data: PatternDict) -> "RedactionPattern":
         """Create a RedactionPattern from a dictionary representation."""
         return cls(
             type=data["type"],
@@ -43,7 +50,7 @@ class PrivacyFilter:
     """
     
     # Default PII patterns
-    DEFAULT_PATTERNS = [
+    DEFAULT_PATTERNS: Final[List[PatternDict]] = [
         {
             "type": "email",
             "regex": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
@@ -74,7 +81,7 @@ class PrivacyFilter:
     def __init__(
         self,
         redact_pii: bool = True,
-        redaction_patterns: Optional[List[Dict[str, str]]] = None,
+        redaction_patterns: Optional[List[PatternDict]] = None,
         opt_out_users: Optional[List[str]] = None
     ):
         """
@@ -85,11 +92,11 @@ class PrivacyFilter:
             redaction_patterns: List of patterns to use for redaction
             opt_out_users: List of user IDs who have opted out
         """
-        self.redact_pii = redact_pii
-        self.opt_out_users = set(opt_out_users or [])
+        self.redact_pii: bool = redact_pii
+        self.opt_out_users: Set[str] = set(opt_out_users or [])
         
         # Set up redaction patterns
-        self.patterns = []
+        self.patterns: List[RedactionPattern] = []
         if redaction_patterns:
             # Use provided patterns
             for pattern_dict in redaction_patterns:

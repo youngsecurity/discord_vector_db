@@ -9,7 +9,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set, TypedDict, Union
+
 import json
 
 
@@ -18,6 +19,43 @@ class MessageSource(str, Enum):
     DISCORD = "discord"
     SLACK = "slack"
     CUSTOM = "custom"
+
+
+class AttachmentDict(TypedDict, total=False):
+    """TypedDict for Discord attachment structure."""
+    id: str
+    filename: str
+    size: int
+    url: str
+    proxy_url: str
+    width: int
+    height: int
+    content_type: str
+
+
+class EmojiDict(TypedDict, total=False):
+    """TypedDict for Discord emoji structure."""
+    id: Optional[str]
+    name: str
+
+
+class ReactionDict(TypedDict, total=False):
+    """TypedDict for Discord reaction structure."""
+    emoji: EmojiDict
+    count: int
+
+
+class MessageDict(TypedDict, total=False):
+    """TypedDict for Discord message structure."""
+    id: str
+    content: str
+    author: Dict[str, Any]
+    timestamp: str
+    channel_id: str
+    attachments: List[AttachmentDict]
+    reactions: List[ReactionDict]
+    mentions: List[Dict[str, Any]]
+    source: str
 
 
 @dataclass
@@ -91,6 +129,8 @@ class DiscordMessage:
         Returns:
             A dictionary representation of the message
         """
+        # Use Dict[str, Any] to avoid strict type checking for this method
+        # as the return structure might not perfectly match MessageDict
         return {
             "id": self.id,
             "content": self.content,

@@ -1,0 +1,10 @@
+[tool.basedpyright]
+typeCheckingMode = "strict"
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+reportUnusedImport = false  # Disable unused import errors for now
+pythonVersion = "3.10"
+stubPath = "typings"

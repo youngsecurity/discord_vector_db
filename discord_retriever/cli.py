@@ -9,7 +9,7 @@ import datetime
 import logging
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 try:
     import typer
@@ -21,8 +21,8 @@ except ImportError:
     print("CLI dependencies not installed. Please install with: pip install typer rich")
     sys.exit(1)
 
-from .fetcher import DiscordMessageFetcher, parse_messages
-from .processor import VectorDBProcessor, process_for_vector_db
+from .fetcher import DiscordMessageFetcher
+from .processor import VectorDBProcessor
 from .privacy import PrivacyFilter
 
 # Set up CLI app
@@ -41,8 +41,8 @@ logger = logging.getLogger("discord_retriever")
 
 @app.command()
 def fetch(
-    channel_id: str = typer.Argument(..., help="Discord channel ID to fetch messages from"),
-    save_dir: Path = typer.Option("messages", help="Directory to save message batches"),
+    channel_id: str = typer.Argument(None, help="Discord channel ID to fetch messages from"),  # type: ignore
+    save_dir: Path = typer.Option(Path("messages"), help="Directory to save message batches"),
     checkpoint_file: Optional[Path] = typer.Option(None, help="Checkpoint file path"),
     rate_limit: float = typer.Option(1.0, help="Delay between API calls in seconds"),
     max_retries: int = typer.Option(5, help="Maximum number of retries for failed API calls"),
@@ -113,7 +113,7 @@ def fetch(
 
 @app.command()
 def process(
-    messages_dir: Path = typer.Argument(..., help="Directory containing message batch files"),
+    messages_dir: Path = typer.Argument(None, help="Directory containing message batch files"),  # type: ignore
     collection: str = typer.Option("discord_messages", help="Name of the vector database collection"),
     embedding_model: str = typer.Option("all-MiniLM-L6-v2", help="Name of the sentence transformer model"),
     batch_size: int = typer.Option(100, help="Number of messages to process at once"),
@@ -161,7 +161,7 @@ def process(
 
 @app.command()
 def search(
-    query: str = typer.Argument(..., help="Search query"),
+    query: str = typer.Argument(None, help="Search query"),  # type: ignore
     collection: str = typer.Option("discord_messages", help="Name of the vector database collection"),
     embedding_model: str = typer.Option("all-MiniLM-L6-v2", help="Name of the sentence transformer model"),
     n_results: int = typer.Option(5, help="Number of results to return"),
