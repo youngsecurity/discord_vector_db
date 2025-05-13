@@ -15,6 +15,7 @@ We implemented a comprehensive configuration system using Pydantic models:
 - Default fallback values ensuring security-by-default
 
 Example usage:
+
 ```python
 from discord_retriever.config import load_settings, audit_security_config
 
@@ -37,6 +38,7 @@ We developed a rich exception hierarchy in `exceptions.py`:
 - Chain of responsibility pattern for error propagation
 
 This allows for precise error handling such as:
+
 ```python
 try:
     fetcher.fetch_all()
@@ -63,6 +65,7 @@ We defined explicit interfaces using Protocol classes in `api.py`:
 - **`EmbeddingModel`**: Interface for embedding generation
 
 These interfaces allow for:
+
 - Clearer component boundaries
 - Easier testing through mocking
 - Better code documentation through explicit contracts
@@ -78,6 +81,7 @@ We implemented a service provider pattern in `services.py`:
 - Testability improvements through dependency replacement
 
 Example usage:
+
 ```python
 from discord_retriever.api import VectorDatabase, EmbeddingModel
 from discord_retriever.services import ServiceProvider, inject

@@ -6,10 +6,10 @@ that supports loading settings from environment variables and/or config files.
 """
 
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, cast
 from datetime import datetime
-from typing_extensions import Protocol
-from pydantic import BaseModel, Field, field_validator, ConfigDict, ValidationInfo
+from typing_extensions import Protocol, Annotated
+from pydantic import BaseModel, Field, field_validator, ValidationInfo, ConfigDict
 
 
 class FetcherSettings(BaseModel):
@@ -29,9 +29,8 @@ class FetcherSettings(BaseModel):
             return Path(f"checkpoint_{info.data['channel_id']}.json")
         return v
     
-    model_config = ConfigDict(
-        env_prefix="DISCORD_FETCHER_"
-    )
+    # Type annotation workaround for basedpyright
+    model_config: Any = ConfigDict(env_prefix="DISCORD_FETCHER_")
 
 
 class ProcessorSettings(BaseModel):
@@ -41,9 +40,8 @@ class ProcessorSettings(BaseModel):
     embedding_model: str = "all-MiniLM-L6-v2"
     batch_size: int = 100
     
-    model_config = ConfigDict(
-        env_prefix="DISCORD_PROCESSOR_"
-    )
+    # Type annotation workaround for basedpyright
+    model_config: Any = ConfigDict(env_prefix="DISCORD_PROCESSOR_")
 
 
 class PrivacySettings(BaseModel):
@@ -52,9 +50,8 @@ class PrivacySettings(BaseModel):
     opt_out_file: Optional[Path] = None
     custom_patterns: List[Dict[str, str]] = Field(default_factory=list)
     
-    model_config = ConfigDict(
-        env_prefix="DISCORD_PRIVACY_"
-    )
+    # Type annotation workaround for basedpyright
+    model_config: Any = ConfigDict(env_prefix="DISCORD_PRIVACY_")
 
 
 class SecuritySettings(BaseModel):
@@ -63,9 +60,8 @@ class SecuritySettings(BaseModel):
     key_file: Optional[Path] = Field(default=Path("discord_db.key"))
     data_directory: Path = Field(default=Path("secure_data"))
     
-    model_config = ConfigDict(
-        env_prefix="DISCORD_SECURITY_"
-    )
+    # Type annotation workaround for basedpyright
+    model_config: Any = ConfigDict(env_prefix="DISCORD_SECURITY_")
 
 
 class AppSettings(BaseModel):
@@ -75,7 +71,8 @@ class AppSettings(BaseModel):
     privacy: PrivacySettings = Field(default_factory=PrivacySettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     
-    model_config = ConfigDict(
+    # Type annotation workaround for basedpyright
+    model_config: Any = ConfigDict(
         env_prefix="DISCORD_",
         env_nested_delimiter="__"
     )
@@ -100,8 +97,8 @@ def load_settings(config_file: Optional[Path] = None) -> AppSettings:
     # Load from config file if provided
     if config_file and config_file.exists():
         try:
-            import yaml
-            with open(config_file, 'r') as f:
+            import yaml  # type: ignore
+            with open(config_file, "r", encoding="utf-8") as f:
                 settings_dict = yaml.safe_load(f)
         except ImportError:
             raise ImportError("PyYAML is required for YAML config files. Install with 'pip install pyyaml'")
