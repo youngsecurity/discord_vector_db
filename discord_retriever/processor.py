@@ -30,6 +30,8 @@ class VectorDBProcessor:
         collection_name: str,
         embedding_model: str = "all-MiniLM-L6-v2",
         batch_size: int = 100,
+        chroma_client: Optional[Any] = None,
+        model: Optional[Any] = None,
     ):
         """
         Initialize the vector database processor.
@@ -39,6 +41,8 @@ class VectorDBProcessor:
             collection_name: Name of the vector database collection
             embedding_model: Name of the sentence transformer model to use
             batch_size: Number of messages to process at once
+            chroma_client: Optional pre-configured ChromaDB client (for testing)
+            model: Optional pre-configured embedding model (for testing)
         """
         self.messages_directory = Path(messages_directory)
         self.collection_name = collection_name
@@ -48,10 +52,10 @@ class VectorDBProcessor:
         # Progress tracking
         self.progress = ProgressTracker()
         
-        # Lazy-loaded components
-        self._chroma_client = None
+        # Lazy-loaded components or injected dependencies
+        self._chroma_client = chroma_client
         self._collection = None
-        self._model = None
+        self._model = model
     
     @property
     def chroma_client(self):
@@ -91,6 +95,22 @@ class VectorDBProcessor:
                 logger.error("sentence-transformers is not installed. Please install it with: pip install sentence-transformers")
                 raise
         return self._model
+        
+    # For testing purposes only
+    def test_setup(self, mock_collection: Optional[Any] = None, mock_model: Optional[Any] = None):
+        """
+        Set up test doubles for unit testing.
+        
+        This method should ONLY be used in tests.
+        
+        Args:
+            mock_collection: Mock collection to use
+            mock_model: Mock model to use
+        """
+        if mock_collection is not None:
+            self._collection = mock_collection
+        if mock_model is not None:
+            self._model = mock_model
     
     def _load_messages_batch(self, batch_file: Path) -> List[Dict[str, Any]]:
         """

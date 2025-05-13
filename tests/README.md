@@ -6,7 +6,7 @@ This directory contains tests for the Discord Vector DB project. It uses pytest 
 
 The test directory is organized as follows:
 
-```
+```python
 tests/
 ├── __init__.py                      # Makes tests a Python package
 ├── conftest.py                      # Shared fixtures and test configuration
@@ -115,3 +115,20 @@ The tests are designed to run in a CI environment and should:
 2. Use mocks for external dependencies
 3. Be deterministic and reproducible
 4. Have clear error messages
+
+## Requirements
+
+To run the tests, you'll need to install the following dependencies:
+
+```bash
+pip install pytest pytest-asyncio pytest-mock
+```
+
+## Known Issues
+
+When running the tests, you may encounter the following warnings/errors:
+
+1. Type checking errors about protected methods: The tests deliberately access protected methods (prefixed with `_`) for better test coverage.
+2. Mypy/Basedpyright may show errors related to fixture typing. This is intentional as we rely on pytest's dynamic fixture injection.
+
+These warnings don't affect the functionality of the tests and can be safely ignored.

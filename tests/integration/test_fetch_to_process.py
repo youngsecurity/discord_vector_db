@@ -9,12 +9,12 @@ import json
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Sequence
 
 import pytest
 from pytest import MonkeyPatch
 
-from discord_retriever.fetcher import DiscordMessageFetcher
+from discord_retriever.fetcher import DiscordMessageFetcher, MessageData
 from discord_retriever.processor import VectorDBProcessor
 
 
@@ -51,7 +51,7 @@ class TestFetchToProcess:
             original_fetch = fetcher._fetch_messages_batch
             batch_counter = 0
             
-            def mock_fetch_with_limit() -> List[Dict[str, Any]]:
+            def mock_fetch_with_limit() -> List[MessageData]:
                 nonlocal batch_counter
                 if batch_counter < 2:
                     batch_counter += 1
@@ -88,8 +88,14 @@ class TestFetchToProcess:
             assert total_processed == 10
             
             # 5. Test search functionality
-            # Set up mock query response
-            processor.collection.query.return_value = {
+            # Create a completely fresh mock collection with specific return values for this test
+            from unittest.mock import MagicMock
+            
+            # Create fresh mock for the collection
+            mock_collection = MagicMock()
+            
+            # Set up exact return value for this specific test
+            mock_collection.query.return_value = {
                 "ids": [["id1", "id2"]],
                 "documents": [["Test message 1", "Test message 2"]],
                 "metadatas": [[
@@ -99,10 +105,14 @@ class TestFetchToProcess:
                 "distances": [[0.1, 0.2]],
             }
             
+            # Install our mock collection
+            processor.test_setup(mock_collection=mock_collection)
+            
             # Perform search
             results = processor.search("test query")
             
-            # Verify results
+            # Verify our mock was used and results match what we set up
+            mock_collection.query.assert_called_once()
             assert len(results) == 2
             assert results[0]["content"] == "Test message 1"
             assert results[1]["content"] == "Test message 2"
@@ -172,7 +182,7 @@ class TestFetchToProcess:
         original_fetch = fetcher._fetch_messages_batch
         fetch_count = 0
         
-        def mock_fetch_once() -> List[Dict[str, Any]]:
+        def mock_fetch_once() -> List[MessageData]:
             nonlocal fetch_count
             if fetch_count < 1:
                 fetch_count += 1

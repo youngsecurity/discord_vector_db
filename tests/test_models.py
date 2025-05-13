@@ -4,9 +4,9 @@ Unit tests for the discord_retriever.models module.
 This module tests the data structures and utilities defined in models.py.
 """
 
-import json
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict
 
 import pytest
 
@@ -22,7 +22,7 @@ from discord_retriever.models import (
 class TestDiscordMessage:
     """Tests for the DiscordMessage class."""
 
-    def test_from_api_response(self, sample_raw_message):
+    def test_from_api_response(self, sample_raw_message: Dict[str, Any]) -> None:
         """Test conversion from API response dictionary."""
         message = DiscordMessage.from_api_response(sample_raw_message)
         
@@ -37,7 +37,7 @@ class TestDiscordMessage:
         assert message.mentions[0] == "444555666777888999"
         assert message.source == MessageSource.DISCORD
 
-    def test_to_dict(self, sample_discord_message):
+    def test_to_dict(self, sample_discord_message: DiscordMessage) -> None:
         """Test conversion to dictionary representation."""
         message_dict = sample_discord_message.to_dict()
         
@@ -48,7 +48,7 @@ class TestDiscordMessage:
         assert message_dict["channel_id"] == sample_discord_message.channel_id
         assert message_dict["source"] == MessageSource.DISCORD.value
 
-    def test_from_dict(self, sample_discord_message):
+    def test_from_dict(self, sample_discord_message: DiscordMessage) -> None:
         """Test creation from dictionary representation."""
         # Convert message to dict and back to test round trip
         message_dict = sample_discord_message.to_dict()
@@ -62,7 +62,7 @@ class TestDiscordMessage:
         assert reconstructed.channel_id == sample_discord_message.channel_id
         assert reconstructed.source == sample_discord_message.source
 
-    def test_from_dict_with_minimal_data(self):
+    def test_from_dict_with_minimal_data(self) -> None:
         """Test creation with minimal dictionary data."""
         minimal_dict = {
             "id": "12345",
@@ -86,7 +86,7 @@ class TestDiscordMessage:
 class TestCheckpointData:
     """Tests for the CheckpointData class."""
 
-    def test_save_load(self, sample_checkpoint_data, temp_checkpoint_file):
+    def test_save_load(self, sample_checkpoint_data: CheckpointData, temp_checkpoint_file: Path) -> None:
         """Test saving and loading checkpoint data."""
         # Save the checkpoint
         sample_checkpoint_data.save(temp_checkpoint_file)
@@ -107,12 +107,12 @@ class TestCheckpointData:
         # Dates might have microsecond differences, so compare only date components
         assert loaded.last_updated.date() == sample_checkpoint_data.last_updated.date()
 
-    def test_load_nonexistent_file(self):
+    def test_load_nonexistent_file(self) -> None:
         """Test loading from a nonexistent file."""
         result = CheckpointData.load(Path("nonexistent_file.json"))
         assert result is None
 
-    def test_load_invalid_json(self, tmp_path):
+    def test_load_invalid_json(self, tmp_path: Path) -> None:
         """Test loading from an invalid JSON file."""
         # Create an invalid JSON file
         invalid_file = tmp_path / "invalid.json"
@@ -126,7 +126,7 @@ class TestCheckpointData:
 class TestProgressTracker:
     """Tests for the ProgressTracker class."""
 
-    def test_update(self):
+    def test_update(self) -> None:
         """Test updating the progress tracker."""
         tracker = ProgressTracker(total_items=100)
         
@@ -145,19 +145,19 @@ class TestProgressTracker:
         assert tracker.processed_items == 50
         assert tracker.percentage_complete == 50.0
 
-    def test_percentage_complete_no_total(self):
+    def test_percentage_complete_no_total(self) -> None:
         """Test percentage calculation with no total items."""
         tracker = ProgressTracker()  # No total items specified
         tracker.update(50)
         assert tracker.percentage_complete == 0.0
 
-    def test_percentage_complete_exceeds_100(self):
+    def test_percentage_complete_exceeds_100(self) -> None:
         """Test percentage doesn't exceed 100%."""
         tracker = ProgressTracker(total_items=10)
         tracker.update(20)  # Process more than the total
         assert tracker.percentage_complete == 100.0
 
-    def test_is_stalled(self, monkeypatch):
+    def test_is_stalled(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test stall detection."""
         tracker = ProgressTracker(stall_timeout=1)  # 1 second timeout for faster testing
         
@@ -178,7 +178,7 @@ class TestProgressTracker:
 class TestCircuitBreaker:
     """Tests for the CircuitBreaker class."""
 
-    def test_initial_state(self):
+    def test_initial_state(self) -> None:
         """Test initial state of circuit breaker."""
         breaker = CircuitBreaker()
         assert not breaker.is_open
@@ -186,7 +186,7 @@ class TestCircuitBreaker:
         assert breaker.last_failure_time is None
         assert breaker.can_execute()
 
-    def test_record_failure(self):
+    def test_record_failure(self) -> None:
         """Test recording failures."""
         breaker = CircuitBreaker(max_failures=3)
         
@@ -209,7 +209,7 @@ class TestCircuitBreaker:
         assert breaker.failures == 3
         assert not breaker.can_execute()
 
-    def test_record_success(self):
+    def test_record_success(self) -> None:
         """Test recording success resets the circuit breaker."""
         breaker = CircuitBreaker(max_failures=3)
         
@@ -225,7 +225,7 @@ class TestCircuitBreaker:
         assert breaker.last_failure_time is None
         assert breaker.can_execute()
 
-    def test_timeout_reset(self, monkeypatch):
+    def test_timeout_reset(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test circuit half-opens after timeout."""
         breaker = CircuitBreaker(max_failures=1, reset_timeout=10)
         

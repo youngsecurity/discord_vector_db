@@ -6,19 +6,27 @@ This module tests the command-line interface functionality.
 
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, List, Dict
 
 import pytest
-from pytest_mock import MockFixture
-from typer.testing import CliRunner
+
+# Import MockFixture from conftest to avoid import errors
+from tests.conftest import MockFixture
+
+# Type for CliRunner
+from typing import Protocol
+class CliRunner(Protocol):
+    """Protocol for typer.testing.CliRunner."""
+    def invoke(self, app: Any, args: List[str], **kwargs: Any) -> Any: ...
 
 from discord_retriever.cli import app
 
 
 @pytest.fixture
-def cli_runner() -> CliRunner:
+def cli_runner() -> Any:
     """Create a CLI runner for testing."""
-    return CliRunner()
+    from typer.testing import CliRunner as TyperCliRunner
+    return TyperCliRunner()
 
 
 class TestCLICommands:
@@ -167,7 +175,7 @@ class TestCLICommands:
             from discord_retriever.models import ProgressTracker
             self.progress = ProgressTracker()
 
-        def mock_search(self: Any, query: str, n_results: int = 5) -> list:
+        def mock_search(self: Any, query: str, n_results: int = 5) -> List[Dict[str, Any]]:
             nonlocal mock_search_called, search_args
             mock_search_called = True
             search_args = {"query": query, "n_results": n_results}

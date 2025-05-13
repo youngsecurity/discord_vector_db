@@ -6,20 +6,53 @@ to reduce duplication and provide standardized test data.
 """
 
 import json
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, TypeVar
 
 import pytest
-from pytest_mock import MockerFixture
+from typing_extensions import Protocol
 
-from discord_retriever.models import (
-    CheckpointData,
-    DiscordMessage,
-    MessageSource,
-)
+from discord_retriever.models import CheckpointData, DiscordMessage
 
+# Type for pytest's MockerFixture - avoids import issues
+# while still providing type checking hints
+T = TypeVar("T")
+class MockFixture(Protocol):
+    """Protocol for pytest-mock's MockerFixture."""
+    def patch(self, target: str, **kwargs: Any) -> Any: ...
+    def MagicMock(self, **kwargs: Any) -> Any: ...
+
+
+# --------- Test Environment Setup --------- #
+
+@pytest.fixture(autouse=True)
+def clean_environment(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Reset environment for each test to avoid cross-test contamination."""
+    # Skip resetting checkpoints for tests that need to test checkpoint loading
+    if ('test_load_checkpoint' in request.node.name or 
+        'test_partial_data_recovery' in request.node.name):
+        return
+        
+    # Monkeypatch DiscordMessageFetcher to reset checkpoint persistence
+    from discord_retriever.fetcher import DiscordMessageFetcher
+    
+    original_init = DiscordMessageFetcher.__init__
+    
+    def patched_init(self: Any, **kwargs: Any) -> None:
+        result = original_init(self, **kwargs)
+        # Override any loaded checkpoint data to start fresh
+        self.oldest_message_id = None
+        self.batch_count = 0 
+        self.total_messages = 0
+        
+        # Reset circuit breaker counter
+        if hasattr(self, 'circuit_breaker'):
+            self.circuit_breaker.failures = 0
+            
+        return result
+    
+    monkeypatch.setattr(DiscordMessageFetcher, "__init__", patched_init)
 
 # --------- Sample Data Fixtures --------- #
 
@@ -146,39 +179,49 @@ def mock_discord_mcp(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def mock_sentence_transformer(mocker: MockerFixture) -> Any:
+def mock_sentence_transformer(mocker: 'MockFixture') -> Any:
     """Mock the SentenceTransformer class."""
     mock_model = mocker.MagicMock()
     
     # Set up the encode method to return predictable vectors
-    def mock_encode(texts: List[str]) -> List[List[float]]:
+    def mock_encode(texts: List[str]) -> Any:
         # Generate a simple vector for each text
-        return [[float(ord(c) % 10) * 0.1 for c in text[:4].ljust(4)] for text in texts]
+        result = [[float(ord(c) % 10) * 0.1 for c in text[:4].ljust(4)] for text in texts]
+        # Create a mock numpy array that has tolist() method
+        mock_array = mocker.MagicMock()
+        mock_array.tolist.return_value = result
+        return mock_array
     
     mock_model.encode.side_effect = mock_encode
     
     # Mock the import and constructor
-    mock_st = mocker.patch("sentence_transformers.SentenceTransformer", return_value=mock_model)
+    mocker.patch("sentence_transformers.SentenceTransformer", return_value=mock_model)
     
     return mock_model
 
 
 @pytest.fixture
-def mock_chroma_client(mocker: MockerFixture) -> Any:
+def mock_chroma_client(mocker: 'MockFixture') -> Any:
     """Mock the ChromaDB client and collection."""
     mock_collection = mocker.MagicMock()
     
     # Configure the collection's query method
     def mock_query(query_embeddings: List[List[float]], n_results: int, include: List[str]) -> Dict[str, Any]:
+        # Here we use the requested n_results parameter to adjust our response
+        mock_size = min(n_results, 3)
+        
         return {
-            "ids": [["id1", "id2", "id3"]],
-            "documents": [["Message 1", "Message 2", "Message 3"]],
+            "ids": [[f"id{i+1}" for i in range(mock_size)]],
+            "documents": [[f"Message {i+1}" for i in range(mock_size)]],
             "metadatas": [[
-                {"author": "user1", "timestamp": "2025-01-01T12:00:00", "channel_id": "123"},
-                {"author": "user2", "timestamp": "2025-01-01T12:01:00", "channel_id": "123"},
-                {"author": "user3", "timestamp": "2025-01-01T12:02:00", "channel_id": "123"},
+                {
+                    "author": f"user{i+1}", 
+                    "timestamp": f"2025-01-01T12:{i:02d}:00", 
+                    "channel_id": "123"
+                } 
+                for i in range(mock_size)
             ]],
-            "distances": [[0.1, 0.2, 0.3]],
+            "distances": [[0.1 * (i+1) for i in range(mock_size)]],
         }
     
     mock_collection.query.side_effect = mock_query
