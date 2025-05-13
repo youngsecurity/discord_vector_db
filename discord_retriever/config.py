@@ -99,7 +99,11 @@ def load_settings(config_file: Optional[Path] = None) -> AppSettings:
         try:
             import yaml  # type: ignore
             with open(config_file, "r", encoding="utf-8") as f:
-                settings_dict = yaml.safe_load(f)
+                yaml_content = yaml.safe_load(f)
+                if isinstance(yaml_content, dict):
+                    settings_dict = yaml_content
+                else:
+                    raise ValueError("Config file must contain a dictionary at the root level")
         except ImportError:
             raise ImportError("PyYAML is required for YAML config files. Install with 'pip install pyyaml'")
         except Exception as e:

@@ -10,7 +10,7 @@ setup(
     name="discord_retriever",
     version="0.1.0",
     author="Joseph Young",
-    author_email="joseph.young@example.com",
+    author_email="joe@youngsecurity.net",
     description="A tool for retrieving Discord messages and storing them in a vector database",
     long_description=long_description,
     long_description_content_type="text/markdown",
